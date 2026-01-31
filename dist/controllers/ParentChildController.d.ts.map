@@ -1,0 +1,1 @@
+{"version":3,"file":"ParentChildController.d.ts","sourceRoot":"","sources":["../../src/controllers/ParentChildController.ts"],"names":[],"mappings":"AAAA,OAAO,EAAE,QAAQ,EAAE,MAAM,SAAS,CAAC;AASnC,qBAAa,qBAAqB;IAChC,MAAM,CAAC,UAAU,gGAsFhB;IAED,MAAM,CAAC,eAAe,gGAoBnB;IAEH,MAAM,CAAC,WAAW,gGAuBf;IAEH,MAAM,CAAC,UAAU,gGAuBd;IAEH,MAAM,CAAC,UAAU,gGAed;IAEH,MAAM,CAAC,cAAc,gGAYlB;CACJ"}

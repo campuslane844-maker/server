@@ -1,0 +1,4 @@
+Retrieving logs...
+Logs were saved to /Users/maniksharma/Documents/campus-lane/backend/.elasticbeanstalk/logs/251120_063403
+Logs were saved to /Users/maniksharma/Documents/campus-lane/backend/.elasticbeanstalk/logs/251120_063403
+Updated symlink at /Users/maniksharma/Documents/campus-lane/backend/.elasticbeanstalk/logs/latest

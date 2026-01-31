@@ -1,0 +1,107 @@
+import { Router } from 'express';
+import { ProgressController } from '../controllers/ProgressController';
+import { requireAnyAuth, requireAuth, requireRole } from '../middleware/auth';
+import { validateBody, validateQuery, validateParams } from '../middleware/validation';
+import { openContentSchema, completeContentSchema, videoPingSchema } from '../validators/progress';
+import { mongoIdSchema, paginationSchema } from '../validators/common';
+import { z } from 'zod';
+
+const router = Router();
+
+/**
+ * Student opens content — creates/updates progress entry with status=in_progress
+ */
+router.post(
+  '/open',
+  requireAuth,
+  validateBody(openContentSchema),
+  ProgressController.openContent
+);
+
+/**
+ * Mark content as complete (with optional quizScore)
+ * Also sets completedAt timestamp and status=completed
+ */
+router.post(
+  '/complete',
+  requireAuth,
+  validateBody(completeContentSchema),
+  ProgressController.completeContent
+);
+
+/**
+ * Video watch ping — increments timeSpent
+ * Should not exceed 5 min increments per ping
+ */
+router.post(
+  '/video/ping',
+  requireAuth,
+  validateBody(videoPingSchema),
+  ProgressController.recordVideoTime
+);
+
+/**
+ * Get logged-in student's progress, filterable by class/subject
+ */
+router.get(
+  '/mine',
+  requireAuth,
+  validateQuery(
+    paginationSchema.extend({
+      classId: mongoIdSchema.optional(),
+      subjectId: mongoIdSchema.optional(),
+      status: z.enum(['not_started', 'in_progress', 'completed']).optional(),
+    })
+  ),
+  ProgressController.getMyProgress
+);
+
+/**
+ * Get logged-in student's recently visited content
+ */
+router.get("/recent",
+  requireAuth,
+  ProgressController.getRecentlyVisited);
+
+/**
+ * Get logged-in student's content progress
+ */
+router.get(
+  '/content/:id',
+  requireAuth,
+  ProgressController.getContentProgress
+);
+
+/**
+ * Parent can view child's progress
+ */
+router.get(
+  '/child/:studentId',
+  requireAuth,
+  requireRole('parent'),
+  validateParams(z.object({ studentId: mongoIdSchema })),
+  ProgressController.getChildProgress
+);
+
+/**
+ * Admin can view child's progress
+ */
+router.get(
+  '/admin/:studentId',
+  requireAnyAuth,
+  validateParams(z.object({ studentId: mongoIdSchema })),
+  ProgressController.getStudentProgress
+);
+
+/**
+ * Admin/teacher can delete a progress record
+ */
+router.delete(
+  '/:id',
+  requireAuth,
+  requireRole(['admin', 'teacher']),
+  validateParams(z.object({ id: mongoIdSchema })),
+  ProgressController.deleteProgress
+);
+
+export default router;
