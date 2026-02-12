@@ -19,7 +19,7 @@ const allowedOrigins = [
     "https://campus-lane.com",
     "https://www.campus-lane.com",
     "https://dashboard.campus-lane.com",
-    "http://localhost:3001",
+    "http://192.168.29.212:3001",
     "http://localhost:3002",
     "http://localhost:3000"
 ];

@@ -1,3 +1,4 @@
+import axios from "axios";
 /** ---------- One-time order ---------- */
 interface CreateOrderOptions {
     amount: number;
@@ -21,7 +22,7 @@ interface CreateSubscriptionOptions {
 interface CancelSubscriptionOptions {
     cancelAtCycleEnd?: boolean;
 }
-export declare const razorpayHttp: import("axios").AxiosInstance;
+export declare const razorpayHttp: axios.AxiosInstance;
 /** ---------- Create Razorpay Order ---------- */
 export declare function createOrder(options: CreateOrderOptions): Promise<import("razorpay/dist/types/orders").Orders.RazorpayOrder>;
 /** ---------- Verify Razorpay Payment Signature ---------- */

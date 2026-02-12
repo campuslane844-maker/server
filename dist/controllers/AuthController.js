@@ -14,6 +14,7 @@ _a = AuthController;
 AuthController.googleSignIn = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { idToken, role, name, phone, city, state, country, pincode, age, classLevel, classOther, upiId } = req.body;
     const referralCode = req.query.ref;
+    console.log(req.body);
     const user = (await UserService_1.UserService.findOrCreateFromGoogle(name, idToken, phone, city, state, country, pincode, role, age, classLevel, classOther, upiId, referralCode));
     const token = (0, jwt_1.generateToken)({
         userId: user._id.toString(),

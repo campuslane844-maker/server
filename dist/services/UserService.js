@@ -59,7 +59,7 @@ async function getGoogleUserFromToken(token) {
         };
     }
     catch (err) {
-        throw new Error("Invalid Google token (neither ID nor access token)");
+        throw new Error(err instanceof Error ? err.message : "Failed to get Google user");
     }
 }
 class UserService {

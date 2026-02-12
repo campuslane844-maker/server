@@ -380,7 +380,7 @@ export class ContentController {
           progress: null,
         }));
       }
-
+      
       const result = createPaginationResult(
         contentWithProgress,
         total,
@@ -467,7 +467,7 @@ export class ContentController {
         limit,
         includeDeleted,
       } = req.query as any;
-
+      
       const { skip } = getPaginationParams(req.query);
 
       const filter: any = {};
@@ -536,17 +536,17 @@ export class ContentController {
           progress: null,
         }));
       }
-
+      
       const result = createPaginationResult(
         contentWithProgress,
         total,
         page,
         limit
       );
-
+      
       res.status(200).json({
         success: true,
-        ...result,
+        data: result
       });
     }
   );

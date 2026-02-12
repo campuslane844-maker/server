@@ -371,7 +371,7 @@ ContentController.getUserContent = (0, asyncHandler_1.asyncHandler)(async (req, 
     const result = (0, pagination_1.createPaginationResult)(contentWithProgress, total, page, limit);
     res.status(200).json({
         success: true,
-        ...result,
+        data: result
     });
 });
 ContentController.getContentById = (0, asyncHandler_1.asyncHandler)(async (req, res) => {

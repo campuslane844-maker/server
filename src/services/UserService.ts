@@ -31,7 +31,7 @@ async function getGoogleUserFromToken(token: string): Promise<{
       idToken: token,
       audience: GOOGLE_CLIENT_ID,
     });
-
+    
     const payload = ticket.getPayload();
     if (!payload || !payload.email || !payload.sub) {
       throw new Error("Invalid ID token payload");
@@ -69,7 +69,7 @@ async function getGoogleUserFromToken(token: string): Promise<{
       picture: data.picture,
     };
   } catch (err) {
-    throw new Error("Invalid Google token (neither ID nor access token)");
+    throw new Error(err instanceof Error ? err.message : "Failed to get Google user");
   }
 }
 
@@ -126,8 +126,6 @@ export class UserService {
       upiId,
       referredBy: referrerUser?._id as Types.ObjectId,
     };
-
-    
 
     if (userData.role === "student") {
       if (age) {

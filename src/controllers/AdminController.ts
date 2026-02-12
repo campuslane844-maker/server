@@ -55,7 +55,7 @@ export class AdminController {
         success: true,
         ...result,
       });
-    }
+    },
   );
 
   static getTeacherById = asyncHandler(
@@ -80,7 +80,7 @@ export class AdminController {
           content,
         },
       });
-    }
+    },
   );
 
   static updateTeacher = asyncHandler(
@@ -90,7 +90,7 @@ export class AdminController {
       const teacher = await User.findOneAndUpdate(
         { _id: id, isDeleted: false },
         req.body,
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       );
 
       if (!teacher) {
@@ -101,7 +101,7 @@ export class AdminController {
         success: true,
         data: teacher,
       });
-    }
+    },
   );
 
   static deleteTeacher = asyncHandler(
@@ -122,7 +122,7 @@ export class AdminController {
       return res
         .status(200)
         .json({ success: true, message: "Teacher deleted successfully" });
-    }
+    },
   );
 
   static approveTeacher = asyncHandler(
@@ -182,7 +182,7 @@ export class AdminController {
           method: "upi",
           active: true,
         },
-        { upsert: true }
+        { upsert: true },
       );
 
       // Approve teacher
@@ -212,11 +212,11 @@ export class AdminController {
             status: "active",
             startDate: new Date(),
             endDate: new Date(
-              now.setDate(now.getDate() + (freePlan.durationDays ?? 0))
+              now.setDate(now.getDate() + (freePlan.durationDays ?? 0)),
             ),
           },
         },
-        { upsert: true }
+        { upsert: true },
       );
 
       // REFERRAL REWARD LOGIC (after approval)
@@ -235,7 +235,7 @@ export class AdminController {
         // Cap check
         if (rewardedCount >= MAX_REFERRAL_REWARDS) {
           console.log(
-            `[REFERRAL] Reward cap reached for referrer ${referral.referrer}`
+            `[REFERRAL] Reward cap reached for referrer ${referral.referrer}`,
           );
         } else {
           const referrerSubscription = await TeacherSubscription.findOne({
@@ -257,7 +257,7 @@ export class AdminController {
           console.log(
             `[REFERRAL] Reward granted (${
               rewardedCount + 1
-            }/${MAX_REFERRAL_REWARDS})`
+            }/${MAX_REFERRAL_REWARDS})`,
           );
         }
       }
@@ -267,7 +267,7 @@ export class AdminController {
         data: teacher,
         message: "Teacher approved and payout setup completed",
       });
-    }
+    },
   );
 
   static rejectTeacher = asyncHandler(
@@ -278,7 +278,7 @@ export class AdminController {
       const teacher = await User.findOneAndUpdate(
         { _id: id, role: "teacher", isDeleted: false },
         { approvalStatus: "rejected", feedback },
-        { new: true }
+        { new: true },
       );
 
       if (!teacher) {
@@ -290,7 +290,7 @@ export class AdminController {
         data: teacher,
         message: "Teacher rejected successfully",
       });
-    }
+    },
   );
 
   static getContentForApproval = asyncHandler(
@@ -341,7 +341,7 @@ export class AdminController {
         success: true,
         ...result,
       });
-    }
+    },
   );
 
   static approveContent = asyncHandler(
@@ -360,7 +360,7 @@ export class AdminController {
           feedback,
           approvedAt: new Date(),
         },
-        { new: true }
+        { new: true },
       );
 
       if (!content) {
@@ -374,12 +374,12 @@ export class AdminController {
       if (content.uploaderRole === "teacher") {
         try {
           const subscription = await assertTeacherCanUpload(
-            content.uploaderId.toString()
+            content.uploaderId.toString(),
           );
 
           await TeacherSubscription.updateOne(
             { _id: subscription._id },
-            { $inc: { uploadsUsed: 1 } }
+            { $inc: { uploadsUsed: 1 } },
           );
         } catch (err: any) {
           if (err.message === "Upload limit reached") {
@@ -388,7 +388,7 @@ export class AdminController {
               {
                 approvalStatus: "rejected",
                 feedback: "Upload limit exceeded. Please upgrade plan.",
-              }
+              },
             );
           }
           throw err;
@@ -400,7 +400,7 @@ export class AdminController {
         data: content,
         message: "Content approved successfully",
       });
-    }
+    },
   );
 
   static rejectContent = asyncHandler(
@@ -411,7 +411,7 @@ export class AdminController {
       const content = await Content.findOneAndUpdate(
         { _id: id, isDeleted: false },
         { approvalStatus: "rejected", feedback },
-        { new: true }
+        { new: true },
       );
 
       if (!content) {
@@ -423,7 +423,7 @@ export class AdminController {
         data: content,
         message: "Content rejected successfully",
       });
-    }
+    },
   );
 
   static getStudents = asyncHandler(
@@ -454,7 +454,7 @@ export class AdminController {
         success: true,
         ...result,
       });
-    }
+    },
   );
 
   static getStudentById = asyncHandler(
@@ -467,7 +467,7 @@ export class AdminController {
         success: true,
         data: student,
       });
-    }
+    },
   );
 
   static updateStudent = asyncHandler(
@@ -477,7 +477,7 @@ export class AdminController {
       const student = await User.findOneAndUpdate(
         { _id: id, isDeleted: false },
         req.body,
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       );
 
       if (!student) {
@@ -488,7 +488,7 @@ export class AdminController {
         success: true,
         data: student,
       });
-    }
+    },
   );
 
   static deleteStudent = asyncHandler(
@@ -509,7 +509,7 @@ export class AdminController {
       return res
         .status(200)
         .json({ success: true, message: "Student deleted successfully" });
-    }
+    },
   );
 
   static getParents = asyncHandler(
@@ -540,7 +540,7 @@ export class AdminController {
         success: true,
         ...result,
       });
-    }
+    },
   );
 
   static getParentById = asyncHandler(
@@ -566,7 +566,7 @@ export class AdminController {
           children,
         },
       });
-    }
+    },
   );
 
   static updateParent = asyncHandler(
@@ -576,7 +576,7 @@ export class AdminController {
       const parent = await User.findOneAndUpdate(
         { _id: id, isDeleted: false },
         req.body,
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       );
 
       if (!parent) {
@@ -587,7 +587,7 @@ export class AdminController {
         success: true,
         data: parent,
       });
-    }
+    },
   );
 
   static deleteParent = asyncHandler(
@@ -608,7 +608,7 @@ export class AdminController {
       return res
         .status(200)
         .json({ success: true, message: "Parent deleted successfully" });
-    }
+    },
   );
 
   static generatePresignedUrl = asyncHandler(
@@ -651,7 +651,7 @@ export class AdminController {
         success: true,
         data: presignedData,
       });
-    }
+    },
   );
 }
 
@@ -665,7 +665,7 @@ export const updatePayPerView = asyncHandler(async (req, res) => {
   const config = await PlatformConfig.findOneAndUpdate(
     {},
     { payPerView },
-    { new: true, upsert: true }
+    { new: true, upsert: true },
   );
 
   res.json({

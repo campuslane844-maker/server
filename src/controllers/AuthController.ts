@@ -12,7 +12,7 @@ export class AuthController {
     const { idToken, role, name, phone, city, state, country, pincode, age, classLevel, classOther, upiId } =
       req.body;
     const referralCode = req.query.ref as string | undefined;
-
+    console.log(req.body)
     const user = (await UserService.findOrCreateFromGoogle(
       name,
       idToken,
