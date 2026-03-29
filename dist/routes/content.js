@@ -8,6 +8,8 @@ const validation_1 = require("../middleware/validation");
 const content_1 = require("../validators/content");
 const common_1 = require("../validators/common");
 const router = (0, express_1.Router)();
+// Home feed
+router.get('/home', auth_1.optionalAuth, ContentController_1.ContentController.getHomePage);
 // Classes
 router.get('/classes', ContentController_1.ContentController.getClasses);
 router.get('/classes/:id', ContentController_1.ContentController.getClassById);

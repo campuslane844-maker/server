@@ -146,6 +146,7 @@ ProgressController.getContentProgress = (0, asyncHandler_1.asyncHandler)(async (
 ProgressController.getChildProgress = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { studentId } = req.params;
     const parentId = req.user._id;
+    console.log(parentId);
     // Verify parent-child link
     const link = await ParentChildLink_1.ParentChildLink.findOne({
         parentId,

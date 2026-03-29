@@ -21,6 +21,173 @@ class ContentController {
 }
 exports.ContentController = ContentController;
 _a = ContentController;
+ContentController.getHomePage = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
+    const userId = req.user?.userId;
+    const baseFilter = {
+        approvalStatus: "approved",
+        isDeleted: false,
+    };
+    /**
+     * ===============================
+     * CONTINUE WATCHING
+     * ===============================
+     */
+    let continueWatching = [];
+    let excludeIds = [];
+    if (userId) {
+        const progressDocs = await Progress_1.Progress.find({
+            studentId: userId,
+            status: { $in: ["in_progress"] },
+        })
+            .sort({ updatedAt: -1 })
+            .limit(10)
+            .populate({
+            path: "contentId",
+            match: baseFilter,
+            populate: [
+                { path: "subjectId", select: "name" },
+                { path: "chapterId", select: "name" },
+            ],
+        })
+            .lean();
+        continueWatching = progressDocs
+            .filter((p) => p.contentId)
+            .map((p) => ({
+            ...p.contentId,
+            progress: {
+                progressPercent: p.progressPercent,
+                lastWatchedSecond: p.lastWatchedSecond,
+                status: p.status,
+            },
+        }));
+        excludeIds = continueWatching.map((c) => c._id);
+    }
+    /**
+     * ===============================
+     * USER SUBJECT PREFERENCES
+     * ===============================
+     */
+    let preferredSubjects = [];
+    if (userId) {
+        const subjectAgg = await Progress_1.Progress.aggregate([
+            { $match: { studentId: new mongoose_1.default.Types.ObjectId(userId) } },
+            {
+                $lookup: {
+                    from: "contents",
+                    localField: "contentId",
+                    foreignField: "_id",
+                    as: "content",
+                },
+            },
+            { $unwind: "$content" },
+            {
+                $group: {
+                    _id: "$content.subjectId",
+                    count: { $sum: 1 },
+                },
+            },
+            { $sort: { count: -1 } },
+            { $limit: 3 },
+        ]);
+        preferredSubjects = subjectAgg.map((s) => s._id);
+    }
+    /**
+     * ===============================
+     * PARALLEL DATA FETCH
+     * ===============================
+     */
+    const recommendedQuery = preferredSubjects.length > 0
+        ? Content_1.Content.find({
+            ...baseFilter,
+            subjectId: { $in: preferredSubjects },
+            _id: { $nin: excludeIds },
+        })
+            .sort({ createdAt: -1 })
+            .limit(10)
+            .populate("subjectId", "name")
+            .populate("chapterId", "name")
+            .lean()
+        : Promise.resolve([]);
+    const popularQuery = Content_1.Content.find({
+        ...baseFilter,
+        _id: { $nin: excludeIds },
+    })
+        .sort({ uniqueViews: -1 })
+        .limit(10)
+        .populate("subjectId", "name")
+        .populate("chapterId", "name")
+        .lean();
+    const recentQuery = Content_1.Content.find({
+        ...baseFilter,
+        _id: { $nin: excludeIds },
+    })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate("subjectId", "name")
+        .populate("chapterId", "name")
+        .lean();
+    const quickLearningQuery = Content_1.Content.find({
+        ...baseFilter,
+        duration: { $lte: 600 },
+        _id: { $nin: excludeIds },
+    })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate("subjectId", "name")
+        .populate("chapterId", "name")
+        .lean();
+    const topicsQuery = Content_1.Content.aggregate([
+        { $match: baseFilter },
+        {
+            $group: {
+                _id: "$chapterId",
+                contentCount: { $sum: 1 },
+            },
+        },
+        { $sort: { contentCount: -1 } },
+        { $limit: 10 },
+        {
+            $lookup: {
+                from: "chapters",
+                localField: "_id",
+                foreignField: "_id",
+                as: "chapter",
+            },
+        },
+        { $unwind: "$chapter" },
+        {
+            $project: {
+                _id: "$chapter._id",
+                name: "$chapter.name",
+                thumbnailKey: "$chapter.thumbnailKey",
+                contentCount: 1,
+            },
+        },
+    ]);
+    const [recommended, popular, recent, quickLearning, topics] = await Promise.all([
+        recommendedQuery,
+        popularQuery,
+        recentQuery,
+        quickLearningQuery,
+        topicsQuery,
+    ]);
+    /**
+     * ===============================
+     * RESPONSE
+     * ===============================
+     */
+    res.status(200).json({
+        success: true,
+        data: {
+            continueWatching,
+            recommended,
+            popular,
+            recent,
+            quickLearning,
+            topics,
+        },
+    });
+});
 // Classes
 ContentController.getClasses = (0, asyncHandler_1.asyncHandler)(async (req, res) => {
     const { page, limit } = req.query;
@@ -371,7 +538,7 @@ ContentController.getUserContent = (0, asyncHandler_1.asyncHandler)(async (req, 
     const result = (0, pagination_1.createPaginationResult)(contentWithProgress, total, page, limit);
     res.status(200).json({
         success: true,
-        data: result
+        ...result,
     });
 });
 ContentController.getContentById = (0, asyncHandler_1.asyncHandler)(async (req, res) => {

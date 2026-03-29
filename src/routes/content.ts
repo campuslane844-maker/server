@@ -17,6 +17,9 @@ import { mongoIdSchema, paginationSchema } from '../validators/common';
 
 const router = Router();
 
+// Home feed
+router.get('/home', optionalAuth, ContentController.getHomePage);
+
 // Classes
 router.get('/classes', ContentController.getClasses);
 router.get('/classes/:id', ContentController.getClassById);

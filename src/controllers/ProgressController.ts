@@ -197,7 +197,7 @@ export class ProgressController {
     async (req: AuthenticatedRequest, res: Response) => {
       const { studentId } = req.params;
       const parentId = req.user._id;
-
+      console.log(parentId)
       // Verify parent-child link
       const link = await ParentChildLink.findOne({
         parentId,

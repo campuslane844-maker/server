@@ -17,6 +17,208 @@ import { IProgress, Progress } from "../models/Progress";
 import { assertTeacherCanUpload } from "../controllers/TeacherSubscriptionController";
 
 export class ContentController {
+  static getHomePage = asyncHandler(
+    async (req: AuthenticatedRequest, res: Response) => {
+      const userId = req.user?.userId;
+
+      const baseFilter: any = {
+        approvalStatus: "approved",
+        isDeleted: false,
+      };
+
+      /**
+       * ===============================
+       * CONTINUE WATCHING
+       * ===============================
+       */
+
+      let continueWatching: any[] = [];
+      let excludeIds: mongoose.Types.ObjectId[] = [];
+
+      if (userId) {
+        const progressDocs = await Progress.find({
+          studentId: userId,
+          status: { $in: ["in_progress"] },
+        })
+          .sort({ updatedAt: -1 })
+          .limit(10)
+          .populate({
+            path: "contentId",
+            match: baseFilter,
+            populate: [
+              { path: "subjectId", select: "name" },
+              { path: "chapterId", select: "name" },
+            ],
+          })
+          .lean();
+
+        continueWatching = progressDocs
+          .filter((p) => p.contentId)
+          .map((p) => ({
+            ...(p.contentId as any),
+            progress: {
+              progressPercent: p.progressPercent,
+              lastWatchedSecond: p.lastWatchedSecond,
+              status: p.status,
+            },
+          }));
+
+        excludeIds = continueWatching.map((c) => c._id);
+      }
+
+      /**
+       * ===============================
+       * USER SUBJECT PREFERENCES
+       * ===============================
+       */
+
+      let preferredSubjects: mongoose.Types.ObjectId[] = [];
+
+      if (userId) {
+        const subjectAgg = await Progress.aggregate([
+          { $match: { studentId: new mongoose.Types.ObjectId(userId) } },
+
+          {
+            $lookup: {
+              from: "contents",
+              localField: "contentId",
+              foreignField: "_id",
+              as: "content",
+            },
+          },
+
+          { $unwind: "$content" },
+
+          {
+            $group: {
+              _id: "$content.subjectId",
+              count: { $sum: 1 },
+            },
+          },
+
+          { $sort: { count: -1 } },
+
+          { $limit: 3 },
+        ]);
+
+        preferredSubjects = subjectAgg.map((s) => s._id);
+      }
+
+      /**
+       * ===============================
+       * PARALLEL DATA FETCH
+       * ===============================
+       */
+
+      const recommendedQuery =
+        preferredSubjects.length > 0
+          ? Content.find({
+              ...baseFilter,
+              subjectId: { $in: preferredSubjects },
+              _id: { $nin: excludeIds },
+            })
+              .sort({ createdAt: -1 })
+              .limit(10)
+              .populate("subjectId", "name")
+              .populate("chapterId", "name")
+              .lean()
+          : Promise.resolve([]);
+
+      const popularQuery = Content.find({
+        ...baseFilter,
+        _id: { $nin: excludeIds },
+      })
+        .sort({ uniqueViews: -1 })
+        .limit(10)
+        .populate("subjectId", "name")
+        .populate("chapterId", "name")
+        .lean();
+
+      const recentQuery = Content.find({
+        ...baseFilter,
+        _id: { $nin: excludeIds },
+      })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate("subjectId", "name")
+        .populate("chapterId", "name")
+        .lean();
+
+      const quickLearningQuery = Content.find({
+        ...baseFilter,
+        duration: { $lte: 600 },
+        _id: { $nin: excludeIds },
+      })
+        .sort({ createdAt: -1 })
+        .limit(10)
+        .populate("subjectId", "name")
+        .populate("chapterId", "name")
+        .lean();
+
+      const topicsQuery = Content.aggregate([
+        { $match: baseFilter },
+
+        {
+          $group: {
+            _id: "$chapterId",
+            contentCount: { $sum: 1 },
+          },
+        },
+
+        { $sort: { contentCount: -1 } },
+
+        { $limit: 10 },
+
+        {
+          $lookup: {
+            from: "chapters",
+            localField: "_id",
+            foreignField: "_id",
+            as: "chapter",
+          },
+        },
+
+        { $unwind: "$chapter" },
+
+        {
+          $project: {
+            _id: "$chapter._id",
+            name: "$chapter.name",
+            thumbnailKey: "$chapter.thumbnailKey",
+            contentCount: 1,
+          },
+        },
+      ]);
+
+      const [recommended, popular, recent, quickLearning, topics] =
+        await Promise.all([
+          recommendedQuery,
+          popularQuery,
+          recentQuery,
+          quickLearningQuery,
+          topicsQuery,
+        ]);
+
+      /**
+       * ===============================
+       * RESPONSE
+       * ===============================
+       */
+
+      res.status(200).json({
+        success: true,
+        data: {
+          continueWatching,
+          recommended,
+          popular,
+          recent,
+          quickLearning,
+          topics,
+        },
+      });
+    },
+  );
+
   // Classes
   static getClasses = asyncHandler(
     async (req: AuthenticatedRequest, res: Response) => {
@@ -37,7 +239,7 @@ export class ContentController {
         success: true,
         ...result,
       });
-    }
+    },
   );
 
   static getClassById = asyncHandler(
@@ -50,7 +252,7 @@ export class ContentController {
         success: true,
         ...classData,
       });
-    }
+    },
   );
 
   static createClass = asyncHandler(
@@ -62,7 +264,7 @@ export class ContentController {
         success: true,
         data: classData,
       });
-    }
+    },
   );
 
   static updateClass = asyncHandler(
@@ -72,7 +274,7 @@ export class ContentController {
       const classData = await Class.findOneAndUpdate(
         { _id: id, isDeleted: false },
         req.body,
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       );
 
       if (!classData) {
@@ -83,7 +285,7 @@ export class ContentController {
         success: true,
         data: classData,
       });
-    }
+    },
   );
 
   static deleteClass = asyncHandler(
@@ -97,7 +299,7 @@ export class ContentController {
           deletedAt: new Date(),
           deletedBy: req.user?._id || req.admin?._id,
         },
-        { new: true }
+        { new: true },
       );
 
       if (!classData) {
@@ -108,7 +310,7 @@ export class ContentController {
         success: true,
         message: "Class deleted successfully",
       });
-    }
+    },
   );
 
   // Subjects
@@ -127,7 +329,7 @@ export class ContentController {
         success: true,
         data: subjects,
       });
-    }
+    },
   );
 
   static getSubjectById = asyncHandler(
@@ -140,7 +342,7 @@ export class ContentController {
         success: true,
         ...subjectData,
       });
-    }
+    },
   );
 
   static createSubject = asyncHandler(
@@ -152,7 +354,7 @@ export class ContentController {
         success: true,
         data: subject,
       });
-    }
+    },
   );
 
   static updateSubject = asyncHandler(
@@ -162,7 +364,7 @@ export class ContentController {
       const subject = await Subject.findOneAndUpdate(
         { _id: id, isDeleted: false },
         req.body,
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       );
 
       if (!subject) {
@@ -173,7 +375,7 @@ export class ContentController {
         success: true,
         data: subject,
       });
-    }
+    },
   );
 
   static deleteSubject = asyncHandler(
@@ -187,7 +389,7 @@ export class ContentController {
           deletedAt: new Date(),
           deletedBy: req.user?._id || req.admin?._id,
         },
-        { new: true }
+        { new: true },
       );
 
       if (!subject) {
@@ -198,7 +400,7 @@ export class ContentController {
         success: true,
         message: "Subject deleted successfully",
       });
-    }
+    },
   );
 
   // Chapters
@@ -217,7 +419,7 @@ export class ContentController {
         success: true,
         data: chapters,
       });
-    }
+    },
   );
 
   static getChapterById = asyncHandler(
@@ -230,7 +432,7 @@ export class ContentController {
         success: true,
         ...chapterData,
       });
-    }
+    },
   );
 
   static createChapter = asyncHandler(
@@ -242,7 +444,7 @@ export class ContentController {
         success: true,
         data: chapter,
       });
-    }
+    },
   );
 
   static updateChapter = asyncHandler(
@@ -252,7 +454,7 @@ export class ContentController {
       const chapter = await Chapter.findOneAndUpdate(
         { _id: id, isDeleted: false },
         req.body,
-        { new: true, runValidators: true }
+        { new: true, runValidators: true },
       );
 
       if (!chapter) {
@@ -263,7 +465,7 @@ export class ContentController {
         success: true,
         data: chapter,
       });
-    }
+    },
   );
 
   static deleteChapter = asyncHandler(
@@ -277,7 +479,7 @@ export class ContentController {
           deletedAt: new Date(),
           deletedBy: req.user?._id || req.admin?._id,
         },
-        { new: true }
+        { new: true },
       );
 
       if (!chapter) {
@@ -288,7 +490,7 @@ export class ContentController {
         success: true,
         message: "Chapter deleted successfully",
       });
-    }
+    },
   );
 
   // Content
@@ -364,7 +566,7 @@ export class ContentController {
         }).lean<IProgress[]>();
 
         const progressMap = new Map(
-          progressDocs.map((p) => [p.contentId.toString(), p])
+          progressDocs.map((p) => [p.contentId.toString(), p]),
         );
 
         contentWithProgress = content.map((c) => ({
@@ -380,19 +582,19 @@ export class ContentController {
           progress: null,
         }));
       }
-      
+
       const result = createPaginationResult(
         contentWithProgress,
         total,
         page,
-        limit
+        limit,
       );
 
       res.status(200).json({
         success: true,
         ...result,
       });
-    }
+    },
   );
 
   // Content
@@ -450,7 +652,7 @@ export class ContentController {
         success: true,
         ...result,
       });
-    }
+    },
   );
 
   static getUserContent = asyncHandler(
@@ -467,7 +669,7 @@ export class ContentController {
         limit,
         includeDeleted,
       } = req.query as any;
-      
+
       const { skip } = getPaginationParams(req.query);
 
       const filter: any = {};
@@ -489,9 +691,8 @@ export class ContentController {
         else filter.paid = false;
       }
 
-      
       filter.approvalStatus = "approved";
-      
+
       // Add text search
       if (search) {
         filter.$text = { $search: search };
@@ -520,7 +721,7 @@ export class ContentController {
         }).lean<IProgress[]>();
 
         const progressMap = new Map(
-          progressDocs.map((p) => [p.contentId.toString(), p])
+          progressDocs.map((p) => [p.contentId.toString(), p]),
         );
 
         contentWithProgress = content.map((c) => ({
@@ -536,19 +737,19 @@ export class ContentController {
           progress: null,
         }));
       }
-      
+
       const result = createPaginationResult(
         contentWithProgress,
         total,
         page,
-        limit
+        limit,
       );
-      
+
       res.status(200).json({
         success: true,
-        data: result
+        ...result,
       });
-    }
+    },
   );
 
   static getContentById = asyncHandler(
@@ -580,7 +781,7 @@ export class ContentController {
         success: true,
         data: content,
       });
-    }
+    },
   );
 
   static createContent = asyncHandler(
@@ -603,7 +804,7 @@ export class ContentController {
       if (req.user?.role === "teacher") {
         await NotificationService.notifyContentSubmission(
           content._id as mongoose.Types.ObjectId,
-          content.title
+          content.title,
         );
       }
 
@@ -611,7 +812,7 @@ export class ContentController {
         success: true,
         data: content,
       });
-    }
+    },
   );
 
   static updateContent = asyncHandler(
@@ -639,7 +840,7 @@ export class ContentController {
       if (req.user?.role === "teacher") {
         await NotificationService.notifyContentSubmission(
           content._id as mongoose.Types.ObjectId,
-          content.title
+          content.title,
         );
       }
 
@@ -650,7 +851,7 @@ export class ContentController {
         success: true,
         data: content,
       });
-    }
+    },
   );
 
   static deleteContent = asyncHandler(
@@ -671,7 +872,7 @@ export class ContentController {
         }
         if (content.approvalStatus === "approved") {
           throw new AuthorizationError(
-            "Can only delete pending and rejected content"
+            "Can only delete pending and rejected content",
           );
         }
       }
@@ -685,7 +886,7 @@ export class ContentController {
         success: true,
         message: "Content deleted successfully",
       });
-    }
+    },
   );
 
   // Bookmark
@@ -707,7 +908,7 @@ export class ContentController {
         success: true,
         data: bookmarks,
       });
-    }
+    },
   );
 
   static addToBookmark = asyncHandler(
@@ -730,7 +931,7 @@ export class ContentController {
       const bookmarks = await Bookmark.findOneAndUpdate(
         { userId },
         { $addToSet: { contents: contentId } },
-        { upsert: true, new: true }
+        { upsert: true, new: true },
       ).populate("contents", "name type");
 
       return res.status(200).json({
@@ -738,7 +939,7 @@ export class ContentController {
         message: "Content added to Bookmark",
         data: bookmarks,
       });
-    }
+    },
   );
 
   static removeFromBookmark = asyncHandler(
@@ -752,7 +953,7 @@ export class ContentController {
       }
 
       bookmarks.contents = bookmarks.contents.filter(
-        (id) => id.toString() !== contentId
+        (id) => id.toString() !== contentId,
       );
 
       await bookmarks.save();
@@ -761,6 +962,6 @@ export class ContentController {
         success: true,
         data: bookmarks,
       });
-    }
+    },
   );
 }

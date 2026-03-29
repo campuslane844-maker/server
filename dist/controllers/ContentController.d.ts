@@ -1,5 +1,6 @@
 import { Response } from "express";
 export declare class ContentController {
+    static getHomePage: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
     static getClasses: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
     static getClassById: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
     static createClass: (req: import("express").Request, res: Response, next: import("express").NextFunction) => void;
